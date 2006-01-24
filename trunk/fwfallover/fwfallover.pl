@@ -4,7 +4,7 @@
 #
 # This script is licensed under GPL
 #
-$VERSION = "0.5alpha";
+$VERSION = "0.4.1alpha";
 
 # Standard Modules
 use Getopt::Std;
@@ -23,38 +23,26 @@ use Proc::PID_File;
 
 getopts('vfhc:p:');
 
-die
-"Usage: fwfallover.pl [-v] [-f] [-h] [-c file] [-p pidfile]\n\t-v\tverbosive output\n\t-f\tstay in and print output to foreground\n\t-h\tthis help\n\t-c\tuse file as configuration file\n\t-p\tplace PID in pidfile\n\nversion $VERSION\n"
-  if ($opt_h);
+die "Usage: fwfallover.pl [-v] [-f] [-h] [-c file] [-p pidfile]\n\t-v\tverbosive output\n\t-f\tstay in and print output to foreground\n\t-h\tthis help\n\t-c\tuse file as configuration file\n\t-p\tplace PID in pidfile\n\nversion $VERSION\n" if ($opt_h);
 
 $SIG{'TERM'} = 'shutdown';
 $SIG{'INT'}  = 'shutdown';
 $SIG{'USR1'} = 'verbose';
 $SIG{'USR2'} = 'verbose';
 
-if ($opt_c) {
-    configuration($opt_c);
-}
-else {
-    configuration("/etc/fwfallover.conf");
-}
+if ($opt_c) { configuration($opt_c); }
+else { configuration("/etc/fwfallover.conf"); }
 
-if ($opt_p) {
-    $PIDFile = $opt_p;
-}
-else {
-    $PIDFile = "/var/run/fwfallover.pid";
-}
+if ($opt_p) { $PIDFile = $opt_p; }
+else { $PIDFile = "/var/run/fwfallover.pid"; }
 
-unless ($opt_f) {
-    Proc::Daemon::Init;
-}
+unless ($opt_f) { Proc::Daemon::Init; }
+
 openlog( 'fwfallover.pl', 'cons,pid', $SyslogFacility );
 check4pid();
 msghandlr( 'alert', "fwfallover.pl version $VERSION started",'' ,'');
 msghandlr( 'alert', 'initializing on port:', $PortName, '1' );
-my $PortObj = new Device::SerialPort($PortName)
-  || msghandlr( 'crit', "Can't open $PortName:", $!, '2' );
+my $PortObj = new Device::SerialPort($PortName) || msghandlr( 'crit', "Can't open $PortName:", $!, '2' );
 $PortObj->handshake('rts');
 $PortObj->baudrate(9600);
 $PortObj->parity('odd');
@@ -146,21 +134,14 @@ sub configuration {
         }
     }
     close(CONFFILE) || die "Can't close $_[0]: $!\n";
-    unless ($ThisFirewall) {
-	die "Gateway have not been specified in $_[0]\n";
-    }
-    unless ($OtherFirewall) {
-        die "OtherFirewall have not been specified in $_[0]\n";
-    }
-    unless ($Gateway) {
-	die "ThisFirewall have not been specified in $_[0]\n";
-    }
+    unless ($ThisFirewall)  { die "Gateway have not been specified in $_[0]\n"; }
+    unless ($OtherFirewall) { die "OtherFirewall have not been specified in $_[0]\n"; }
+    unless ($Gateway)       { die "ThisFirewall have not been specified in $_[0]\n"; }
 }
 
 sub check4pid {
     umask 0122;
-    msghandlr( 'crit', "Already running, shutting down...", '', '2' )
-      if ( hold_pid_file($PIDFile) );
+    msghandlr( 'crit', "Already running, shutting down...", '', '2' ) if ( hold_pid_file($PIDFile) );
     umask 0;
 }
 
@@ -376,4 +357,3 @@ sub verbose {
 	}
     }
 }
-
