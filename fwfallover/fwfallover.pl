@@ -14,6 +14,7 @@
 # try to become the master itself.
 #
 
+use Proc::Daemon;
 use Device::SerialPort;
 use Getopt::Std;
 use Net::Ifconfig::Wrapper;
@@ -32,10 +33,10 @@ $PortName         = "/dev/ttyS0";
 $MasterModeScript = "/usr/local/sbin/nonofwinterfaces.pl";
 $SleepInterval    = "5";
 $SyslogFacility   = "local3";
-$ThisFirewall     = "192.116.202.103";
-$OtherFirewall    = "192.116.202.90";
-$Gateway          = "192.116.202.1";
-$SNMPTRAPReceiver = "192.116.202.103";
+$ThisFirewall     = "192.168.1.10";
+$OtherFirewall    = "192.168.1.5";
+$Gateway          = "192.168.1.1";
+$SNMPTRAPReceiver = "127.0.0.1";
 $SNMPCommunity    = "private";
 $pingProtocol     = "icmp";
 
@@ -272,3 +273,4 @@ sub mastermodeteardown {
     }
     sleep($SleepInterval);
 }
+
