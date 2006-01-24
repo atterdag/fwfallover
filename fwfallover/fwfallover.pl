@@ -2,19 +2,9 @@
 #
 # fwfallover.pl - Valdemar Lemche <valdemar@lemche.net>
 #
-# fwfallover.pl - Valdemar Lemche <valdemar@lemche.net>
+# This script is licensed under GPL
 #
-# This script is release TOTALLY as it is, and under no license at all. If it
-# will have any negative impact on your systems, make you sleepless at night
-# or cause world war, I claim no responsibility!
-#
-# The script is just a tiny perl script I made to make two firewalls perform
-# simple fallover using the serial port to avoid network issues.
-#
-# Basically its just a simple master/slave relation. Master is the side that
-# comes up first and the slave checks if master is up, if not, the slave will
-# try to become the master itself.
-$version = "0.3alpha";
+$VERSION = "0.5alpha";
 
 # Standard Modules
 use Getopt::Std;
@@ -28,187 +18,305 @@ use Net::SNMP;
 use Proc::Daemon;
 use Proc::PID_File;
 
-getopts('vfh');
+# Testing Modules
+#use Data::Dumper;
 
-die "Usage: fwfallover.pl [-v] [-f] [-h]\n\t-v\tverbosive output\n\t-f\tstay in and print output to foreground\n\t-h\tthis help\n\nversion $version\n" if ($opt_h);
+getopts('vfhc:p:');
 
-# IMPORTENT OPTIONS ARE SET HERE!
-$PortName         = "/dev/ttyS0";
-$MasterModeScript = "/usr/local/sbin/fwinterfaces.pl";
-$SleepInterval    = "5";
-$SyslogFacility   = "local3";
-$ThisFirewall     = "192.116.202.103";
-$OtherFirewall    = "192.116.202.24";
-$Gateway          = "192.116.202.1";
-$SNMPTRAPReceiver = "127.0.0.1";
-$SNMPCommunity    = "private";
-$pingProtocol     = "icmp";
-$PIDFile          = "/var/run/fwfallover.pid";
+die
+"Usage: fwfallover.pl [-v] [-f] [-h] [-c file] [-p pidfile]\n\t-v\tverbosive output\n\t-f\tstay in and print output to foreground\n\t-h\tthis help\n\t-c\tuse file as configuration file\n\t-p\tplace PID in pidfile\n\nversion $VERSION\n"
+  if ($opt_h);
 
-unless ( $opt_f ) {
-    $SIG{'TERM'} = 'shutdown';
+$SIG{'TERM'} = 'shutdown';
+$SIG{'INT'}  = 'shutdown';
+$SIG{'USR1'} = 'verbose';
+$SIG{'USR2'} = 'verbose';
+
+if ($opt_c) {
+    configuration($opt_c);
+}
+else {
+    configuration("/etc/fwfallover.conf");
+}
+
+if ($opt_p) {
+    $PIDFile = $opt_p;
+}
+else {
+    $PIDFile = "/var/run/fwfallover.pid";
+}
+
+unless ($opt_f) {
     Proc::Daemon::Init;
-} else {
-    $SIG{'INT'} = 'shutdown';
 }
-
 openlog( 'fwfallover.pl', 'cons,pid', $SyslogFacility );
-
-umask 0122;
-errorhandler("Already running, shutting down...",'','2') if ( hold_pid_file($PIDFile) );
-umask 0;
-
-syslog( 'alert', "initializing on port: $PortName" );
-snmptrap( '1', "$PortName");
-if ($opt_f) {
-    $now = localtime;
-    print "$now: initializing on port: $PortName\n";
-}
-my $PortObj = new Device::SerialPort("$PortName") || errorhandler("Can't open $PortName:","$!","2");
+check4pid();
+msghandlr( 'alert', "fwfallover.pl version $VERSION started",'' ,'');
+msghandlr( 'alert', 'initializing on port:', $PortName, '1' );
+my $PortObj = new Device::SerialPort($PortName)
+  || msghandlr( 'crit', "Can't open $PortName:", $!, '2' );
 $PortObj->handshake('rts');
 $PortObj->baudrate(9600);
-$PortObj->parity("odd");
+$PortObj->parity('odd');
 $PortObj->databits(8);
 $PortObj->stopbits(1);
 $PortObj->user_msg(1);
 $PortObj->error_msg(1);
 
-syslog( 'info', 'checking if the other end is initializing...' );
-if ($opt_f) {
-    $now = localtime;
-    print "$now: checking if the other end is initializing...\n";
-}
+msghandlr( 'notice', 'checking if the other end is initializing...', '', '' );
 $PortObj->write("anybody there?\n");
 sleep($SleepInterval);
 my $input = $PortObj->input;
 if ( $input =~ /ping/ ) {
-    syslog( 'notice', 'got ping, sleeping $SleepInterval seconds' );
-    snmptrap('3', 'sleeping');
-    if ($opt_f) {
-        $now = localtime;
-        print "$now: got ping, sleeping $SleepInterval seconds\n";
-    }
+    msghandlr( 'notice', "got ping, sleeping $SleepInterval seconds", '', '3' );
     sleep($SleepInterval);
 }
-
-syslog( 'info', 'sending initial ping' );
-if ($opt_f) {
-    $now = localtime;
-    print "$now: sending initial ping\n";
-}
+msghandlr( 'info', 'sending initial ping', '', '30' );
 $PortObj->write("ping\n");
 sleep($SleepInterval);
 $input = $PortObj->input;
 if ( $input =~ /pong/ ) {
-    loginput( 'info', 'pong' );
+    msghandlr( 'info', 'got pong', '', '41' );
     slave();
-} else {
-    syslog( 'notice', 'no answer, resending second initial ping' );
-    if ($opt_f) {
-        $now = localtime;
-        print "$now: no answer, resending second initial ping\n";
-    }
+}
+else {
+    msghandlr( 'notice', 'no answer, resending second initial ping', '', '42' );
     $PortObj->write("ping\n");
     sleep($SleepInterval);
     $input = $PortObj->input;
     if ( $input =~ /pong/ ) {
-        loginput( 'notice', 'pong' );
+        msghandlr( 'notice', 'got pong', '', '41' );
         slave();
-    } else {
-        syslog( 'notice', 'still no answer, resending third initial ping' );
-        if ($opt_f) {
-            $now = localtime;
-            print "$now: still no answer, resending third initial ping\n";
-        }
+    }
+    else {
+        msghandlr( 'notice', 'still no answer, resending third initial ping',
+            '', '42' );
         $PortObj->write("ping\n");
         sleep($SleepInterval);
         $input = $PortObj->input;
         if ( $input =~ /pong/ ) {
-            loginput( 'notice', 'pong' );
+            msghandlr( 'notice', 'got pong', '', '41' );
             slave();
-        } else {
+        }
+        else {
             master();
         }
     }
 }
 
-closelog;
+sub configuration {
+    $pingProtocol     = "icmp";
+    $pingTimeout      = "0.2";
+    $pingPacketSize   = "56";
+    $PortName         = "/dev/ttyS0";
+    $MasterModeScript = "/etc/init.d/rc.firewall";
+    $SleepInterval    = "5";
+    $SyslogFacility   = "none";
+    $SNMPTRAPReceiver = "none";
+    $SNMPCommunity    = "private";
+    open( CONFFILE, $_[0] ) || die "Can't open $_[0]: $!\n";
+    while (<CONFFILE>) {
+        chomp;
+        if (/^PortName /) {
+            ( $parameter, $PortName ) = split ( / /, $_ );
+        }
+        if (/^MasterModeScript /) {
+            ( $parameter, $MasterModeScript ) = split ( / /, $_ );
+        }
+        if (/^SleepInterval /) {
+            ( $parameter, $SleepInterval ) = split ( / /, $_ );
+        }
+        if (/^SyslogFacility /) {
+            ( $parameter, $SyslogFacility ) = split ( / /, $_ );
+        }
+        if (/^ThisFirewall /) {
+            ( $parameter, $ThisFirewall ) = split ( / /, $_ );
+        }
+        if (/^OtherFirewall /) {
+            ( $parameter, $OtherFirewall ) = split ( / /, $_ );
+        }
+        if (/^Gateway /) {
+            ( $parameter, $Gateway ) = split ( / /, $_ );
+        }
+        if (/^SNMPTRAPReceiver /) {
+            ( $parameter, $SNMPTRAPReceiver ) = split ( / /, $_ );
+        }
+        if (/^SNMPCommunity /) {
+            ( $parameter, $SNMPCommunity ) = split ( / /, $_ );
+        }
+    }
+    close(CONFFILE) || die "Can't close $_[0]: $!\n";
+    unless ($ThisFirewall) {
+	die "Gateway have not been specified in $_[0]\n";
+    }
+    unless ($OtherFirewall) {
+        die "OtherFirewall have not been specified in $_[0]\n";
+    }
+    unless ($Gateway) {
+	die "ThisFirewall have not been specified in $_[0]\n";
+    }
+}
 
-sub master {
-    syslog( 'alert', 'entering master mode' );
-    snmptrap( '10', '');
+sub check4pid {
+    umask 0122;
+    msghandlr( 'crit', "Already running, shutting down...", '', '2' )
+      if ( hold_pid_file($PIDFile) );
+    umask 0;
+}
+
+sub msghandlr {
+    if ( $_[0] eq 'info' ) {
+        if ($opt_v) {
+            msgsendr( $_[0], $_[1], $_[2], $_[3] );
+        }
+    }
+    else {
+        msgsendr( $_[0], $_[1], $_[2], $_[3] );
+    }
+}
+
+sub msgsendr {
+    unless ( $SyslogFacility eq "none" ) {
+        syslog( $_[0], "$_[1]$_[2]" );
+    }
+    unless ( $SNMPTRAPReceiver eq "none" ) {
+        unless ( $_[3] eq '' ) {
+            snmptrap( $_[3], $_[2] );
+        }
+    }
     if ($opt_f) {
         $now = localtime;
-        print "$now: entering master mode\n";
+        print "$now: $_[1]$_[2]\n";
     }
-    exec($MasterModeScript) || errorhandler("Can't execute $MasterModeScript:", "$!", "11");
+}
+
+sub snmptrap {
+    my ( $session, $error ) = Net::SNMP->session(
+        -hostname    => $SNMPTRAPReceiver,
+        -community   => $SNMPCommunity,
+        -port        => 162,
+	-nonblocking => 0x1
+    );
+    if ( !defined($session) ) {
+        printf( "ERROR: %s.\n", $error );
+        msghandlr( 'crit', 'snmp session could not be established: ', $error, '' );
+    }
+    my $result = $session->trap(
+        -enterprise   => '.1.3.6.1.4.1.16971.10',
+        -agentaddr    => $ThisFirewall,
+        -generictrap  => '6',
+        -specifictrap => $_[0],
+        -varbindlist => [ ".1.3.6.1.4.1.16971.10.0.$_[0]", OCTET_STRING, $_[1] ]
+    );
+    if ( !defined($result) ) {
+        printf( "ERROR: %s.\n", $session->error );
+        $session->close;
+        msghandlr( 'crit', 'snmp trap sending failed: ', "$session->error",
+            '' );
+    }
+    $session->snmp_event_loop;
+    $session->close;
+}
+
+sub master {
+    msghandlr( 'alert', 'entering master mode', '', '10' );
+    system($MasterModeScript) && msghandlr( 'crit', "Can't execute $MasterModeScript: ", $!, '11' ) && exit(1);
     while (1) {
         my $input = $PortObj->input;
         if ( $input =~ /ping/ ) {
-            loginput( 'info', 'ping' );
-            logsend( 'info',  'pong' );
+            msghandlr( 'info', 'got ping',     '', '31' );
+            msghandlr( 'info', 'sending pong', '', '40' );
             $PortObj->write("pong\n");
         }
-        $PortObj->purge_rx;
-        $p = Net::Ping->new($pingProtocol);
-        unless ($p->ping($OtherFirewall)) { $client = "down"; }
-        unless ($p->ping($Gateway)) { $router = "down"; }
+	else {
+	    msghandlr( 'info', 'no ping received', '', '32' );
+	}
+#        $PortObj->purge_rx;
+        $p = Net::Ping->new($pingProtocol, $pingTimeout, $pingPacketSize);
+        unless ( $p->ping($OtherFirewall) ) {
+	    msghandlr( 'info', 'resending once ICMP ping received to ', 'OtherFirewall','');
+            unless ( $p->ping($OtherFirewall) ) {
+		msghandlr( 'info', 'resending twice ICMP ping received to ', 'OtherFirewall','');
+                unless ( $p->ping($OtherFirewall) ) {
+	    	    msghandlr( 'info', 'no ICMP pong received from ', 'OtherFirewall', '44' );
+        	    $client = "down";
+		}
+	    }
+        }
+	else { 
+	    msghandlr( 'info', 'got ICMP pong received from ', 'otherfirewall', '43' );
+	}
+        unless ( $p->ping($Gateway) ) {
+	    msghandlr( 'info', 'resending once ICMP ping received to ', 'Gateway','');
+    	    unless ( $p->ping($Gateway) ) {
+		msghandlr( 'info', 'resending twice ICMP ping received to ', 'Gateway','');
+    		unless ( $p->ping($Gateway) ) {
+		    msghandlr( 'info', 'no ICMP pong received from ', 'Gateway', '44' );
+        	    $router = "down";
+		}
+	    }
+        }
+	else { 
+	    msghandlr( 'info', 'got ICMP pong received from ', 'gateway', '43') ;
+	}
         $p->close();
-        if ( $client eq "down" and $router eq "down" ) { slave(); }
+        if ( $client eq "down" and $router eq "down" ) {
+            slave();
+        }
         sleep($SleepInterval);
     }
 }
 
 sub slave {
-    syslog( 'alert', 'entering slave mode' );
-    snmptrap('20','');
-    if ($opt_f) {
-        $now = localtime;
-        print "$now: entering slave mode\n";
-    }
+    msghandlr( 'alert', 'entering slave mode', '', '20' );
     mastermodeteardown();
     while (1) {
         $PortObj->purge_tx;
-        logsend( 'info', 'ping' );
+        msghandlr( 'info', 'sending ping', '', '30' );
         $PortObj->write("ping\n");
         sleep($SleepInterval);
         my $input = $PortObj->input;
         if ( $input =~ /pong/ ) {
-            loginput( 'info', 'pong' );
-        } else {
-            syslog( 'warning', 'resending once ping' );
-            snmptrap('41','1');
-            if ($opt_f) {
-                $now = localtime;
-                print "$now: resending once ping\n";
-            }
+            msghandlr( 'info', 'got pong', '', '41' );
+        }
+        else {
+            msghandlr( 'warning', 'resending once ping', '', '42' );
             $PortObj->write("ping\n");
             sleep($SleepInterval);
             $input = $PortObj->input;
             if ( $input =~ /pong/ ) {
-                loginput( 'notice', 'pong' );
-            } else {
-                syslog( 'warning', 'resending twice ping' );
-                snmptrap( '41','2');
-                if ($opt_f) {
-                    $now = localtime;
-                    print "$now: resending twice ping\n";
-                }
+                msghandlr( 'info', 'got pong', '', '41' );
+            }
+            else {
+                msghandlr( 'warning', 'resending twice ping', '', '30' );
                 $PortObj->write("ping\n");
                 sleep($SleepInterval);
                 $input = $PortObj->input;
                 if ( $input =~ /pong/ ) {
-                    loginput( 'notice', 'pong' );
-                } else {
-                    $p = Net::Ping->new($pingProtocol);
-                    unless ( $p->ping($OtherFirewall)) { $master = "down"; }
-                    if ( $p->ping($Gateway)) { $router = "up"; }
+                    msghandlr( 'notice', 'got pong', '', '41' );
+                }
+                else {
+                    $p = Net::Ping->new($pingProtocol, $pingTimeout, $pingPacketSize);
+                    unless ( $p->ping($OtherFirewall) ) { 
+			msghandlr( 'info', 'no ICMP pong received from ', 'otherfirewall', '44' );
+			$master = "down";
+		    }
+		    else {
+			msghandlr( 'info', 'got ICMP pong from ', 'otherfirewall', '43' );
+		    }
+                    if     ( $p->ping($Gateway) ) {
+			msghandlr( 'info', 'got ICMP pong received from ', 'gateway', '43');
+			$router = "up";
+		    }
+		    else {
+			msghandlr( 'info', 'no ICMP pong received from ', 'gateway', '44' );
+		    }
                     $p->close();
                     if ( $master eq "down" and $router eq "up" ) {
-                        snmptrap('13','');
-                        master();
+                        msghandlr( 'alert', 'master is not responding to ICMP ping; properly down', '', '13' );
                     }
-                    snmptrap('12','');
+                    msghandlr( 'alert', 'master did not respond to 3 pings over serial port', '', '12' );
+		    master();
                 }
             }
         }
@@ -216,79 +324,25 @@ sub slave {
     }
 }
 
-sub loginput {
-    if ($opt_v) {
-        syslog( $_[0], "got $_[1]" );
-        if ( $_[1] eq "ping" ) {
-            snmptrap('30','1')
-        } elsif ( $_[1] eq "pong" ) {
-            snmptrap('40','1')
-        }
-        if ($opt_f) {
-            $now = localtime;
-            print "$now: got $_[1]\n";
-        }
-    }
-}
-
-sub logsend {
-    if ($opt_v) {
-        syslog( $_[0], "sending $_[1]" );
-        if ($opt_f) {
-            $now = localtime;
-            print "$now: sending $_[1]\n";
-        }
-    }
-}
-
-sub snmptrap {
-    my ($session, $error) = Net::SNMP->session(-hostname=>$SNMPTRAPReceiver,
-                                               -community=>$SNMPCommunity,
-                                               -port => 162
-                                              );
-    if (!defined($session)) {
-        printf("ERROR: %s.\n", $error);
-        syslog('crit', "snmp session could not be established: $error");
-    }
-    my $result = $session->trap(-enterprise => '.1.3.6.1.4.1.16971.10',
-                                -agentaddr => $ThisFirewall,
-                                -generictrap => '6',
-                                -specifictrap => $_[0],
-                                -varbindlist => [ ".1.3.6.1.4.1.16971.10.0.$_[0]", OCTET_STRING, $_[1]]
-                               );
-    if (!defined($result)) {
-        printf("ERROR: %s.\n", $session->error);
-        $session->close;
-        syslog('crit',"snmp trap sending failed: $session->error");
-    }
-    $session->close;
-}
-
-sub errorhandler {
-    syslog('alert',"$_[0]: $_[1]");
-    snmptrap( $_[2], $_[1]);
-    $now = localtime;
-    die "$now: $_[0]: $_[1]\n";
-}
-
 sub mastermodeteardown {
-    syslog('crit','masterModeTearDown');
-    snmptrap('14','');
-    my $Info = Net::Ifconfig::Wrapper::Ifconfig('list', '', '', '') or errorhandler("unable to list interfaces","$@", '15');
-    scalar(keys(%{$Info})) or errorhandler("No one interface found. Something wrong?",'1','15');
-    foreach $Iface (sort(keys(%{$Info}))) {
-        unless ( $Iface eq "lo") {
+    msghandlr( 'crit', 'masterModeTearDown', '', '50' );
+    my $Info = Net::Ifconfig::Wrapper::Ifconfig( 'list', '', '', '' ) || msghandlr( 'crit', "unable to list interfaces: ", $@, '15' );
+#    print Dumper(\%{$Info});
+    scalar( keys( %{$Info} ) ) || msghandlr( 'crit', "No interface found. Something wrong?", '', '51' );
+    foreach $Iface ( sort( keys( %{$Info} ) ) ) {
+#	print "$Iface\n";
+        unless ( $Iface eq "lo" ) {
+	    unless ( $Info->{$Iface}{'inet'}{$ThisFirewall} ) {
+		$Result = Net::Ifconfig::Wrapper::Ifconfig( 'down', $Iface, '', '');
+	        $Result or msghandlr( 'alert', "unable to shutdown interface, $Iface: $@", $Iface, '52' );
+		$Result = undef;
+	    }
             foreach $Ip ( keys %{ $Info->{$Iface}{'inet'} } ) {
                 unless ( $Ip eq $ThisFirewall ) {
-                    if ($opt_v) {
-                        syslog( 'notice', "removing $Ip from $Iface");
-                        if ( $opt_f ) {
-                            $now = localtime;
-                            print "$now: removing $Ip from $Iface\n";
-                        }
-                    }
-                    $Result = Net::Ifconfig::Wrapper::Ifconfig('-alias', $Iface, $Ip, '');
-                    $Result or syslog('alert',"unable to remove ip, $Ip: $@");
+                    msghandlr( 'notice', "removing $Ip from $Iface", '', '' );
+		    $Result = Net::Ifconfig::Wrapper::Ifconfig( '-alias', $Iface, $Ip, '' );
+		    $Result or msghandlr( 'alert', "unable to remove ip, $Ip: $@", $Ip, '53' );
+		    $Result = undef;
                 }
             }
         }
@@ -297,20 +351,29 @@ sub mastermodeteardown {
 }
 
 sub shutdown {
-    if ( $opt_f ) {
-        $signal = "INT";
-        $now = localtime;
-        print "$now: caught $signal, shutting down gracefully\n";
-    } else {
-        $signal = "TERM";
-    }
-    syslog('crit',"caught $signal, shutting down gracefully");
-    snmptrap('100','');
-    mastermodeteardown;
+    msghandlr( 'crit', "caught $_[0], shutting down gracefully", '', '250' );
+    mastermodeteardown();
     undef $PortObj;
-    snmptrap('101','');
-    syslog('crit',"shutdown successful...");
+    msghandlr( 'notice', "shutdown successful...", '', '251' );
     closelog;
     exit;
+}
+
+sub verbose {
+    if ( $_[0] eq 'USR1' ) {
+	unless ( $opt_v ) {
+	    $opt_v;
+	    msghandlr( 'notice', "caught $_[0], turning verbosity on", '', '' );
+	} else {
+	    msghandlr( 'notice', "caught $_[0], but verbosity is already on", '', '' );
+	}
+    } elsif ( $_[0] eq 'USR2' ) {
+	if ( $opt_v ) {
+	     undef $opt_v;
+	    msghandlr( 'notice', "caught $_[0], verbosity off", '', '' );
+	} else {
+	    msghandlr( 'notice', "caugth $_[0], but verbosity is already off",'','');
+	}
+    }
 }
 

@@ -1,0 +1,32 @@
+#!/bin/sh
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin:
+
+test -x /usr/local/sbin/fwfallover.pl || exit 0
+
+OPTIONS=""
+
+case "$1" in
+    start)
+        echo -n "Starting Firewall Fallover: fwfallover.pl"
+            /usr/local/sbin/fwfallover.pl $OPTIONS
+        echo .
+        ;;
+    stop)
+        echo -n "Stopping Firewall Fallover: fwfallover.pl"
+            kill -TERM `cat /var/run/fwfallover.pid`
+        echo .
+        ;;
+    restart)
+        echo -n "Restarting Firewall Fallover: fwfallover.pl"
+            kill -TERM `cat /var/run/fwfallover.pid`
+	    sleep 1
+            /usr/local/sbin/fwfallover.pl $OPTIONS
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}" >&2
+        exit 1
+        ;;
+esac
+
+exit 0

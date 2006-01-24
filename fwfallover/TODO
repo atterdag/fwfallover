@@ -1,0 +1,4 @@
+Main features that should be incorperated in to the next release
+
+- Keeping the clients rc.firewall script updated through the serial port.
+- Write a new interface handler, since Net::Ifconfig::Wrapper is quite 'buggy'.

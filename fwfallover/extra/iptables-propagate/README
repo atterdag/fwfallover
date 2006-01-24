@@ -1,0 +1,6 @@
+This is small bash script I use to keep the iptables configuration
+identical between my two firewalls running debian woody.
+
+Notice that each firewall must be able to login on each other though ssh,
+and that the use that logs in must have write access to all the files that
+the script copies.

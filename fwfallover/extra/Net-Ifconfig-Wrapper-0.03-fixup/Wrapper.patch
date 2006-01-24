@@ -1,0 +1,15 @@
+--- Wrapper.pm	Tue Oct 14 00:15:48 2003
++++ Wrapper.pm.fixed	Tue Oct 14 00:15:14 2003
+@@ -681,9 +681,9 @@ $Ifconfig{'up'} = $Ifconfig{'inet'};
+ $Ifconfig{'down'}{'solaris'} = {'ifconfig' => '/sbin/ifconfig %Iface% down',
+                                   'function' => $UpDown,
+                                  };
+-$Ifconfig{'down'}{'freebsd'} = $Ifconfig{'inet'}{'solaris'};
+-$Ifconfig{'down'}{'openbsd'} = $Ifconfig{'inet'}{'solaris'};
+-$Ifconfig{'down'}{'linux'}   = $Ifconfig{'inet'}{'solaris'};
++$Ifconfig{'down'}{'freebsd'} = $Ifconfig{'down'}{'solaris'};
++$Ifconfig{'down'}{'openbsd'} = $Ifconfig{'down'}{'solaris'};
++$Ifconfig{'down'}{'linux'}   = $Ifconfig{'down'}{'solaris'};
+ 
+ $Ifconfig{'+alias'} = {'freebsd' => {'ifconfig' => '/sbin/ifconfig %Iface%         inet %Addr% netmask %Mask% alias',
+                                      'function' => $UpDown},
