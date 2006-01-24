@@ -1,0 +1,12 @@
+# This is an example configuration file for fwfallover.pl, for more 
+# Documentation please refer to fwfallover.conf(5)
+
+PortName /dev/ttyS0
+MasterModeScript /etc/init.d/rc.firewall
+SleepInterval 5
+SyslogFacility local3
+ThisFirewall 192.168.1.10
+OtherFirewall 192.168.1.5
+Gateway 192.168.0.1
+SNMPTRAPReceiver none
+SNMPCommunity private

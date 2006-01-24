@@ -1,0 +1,14 @@
+fwinterfaces.pl
+---------------
+
+DESCRIPTION
+-----------
+This is a small script to assign IPs to interfaces according to fwinterfaces.cfg
+
+INSTALLATION
+------------
+Copy fwinterfaces.cfg to /etc, modify it to your needs.
+Copy fwinterfaces.pl to, for instance, /usr/local/sbin.
+
+Thats it...
+

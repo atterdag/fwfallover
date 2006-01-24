@@ -1,0 +1,116 @@
+.TH "FWFALLOVER.PL" "8" "May 20, 2003" "FWFALLOVER" ""
+.SH "NAME"
+fwfallover.pl \- daemon to manage simple fallover between 2 firewalls
+.SH "SYNOPSIS"
+.B fwfallover.pl
+[-v] [-f] [-h] [-c
+.I configuration file
+] [-p 
+.I pid file
+]
+.SH "DESCRIPTION"
+.B fwfallover.pl
+is just a tiny perl script I made to make two firewalls perform simple 
+fallover using the serial port as well as ICMP echo requests and 
+replies.
+
+Basically its just a simple master/slave relation. Master is the side 
+that comes up first and the slave checks if master is up, if not, the 
+slave will try to become the master itself.
+
+The script is very much written for fwbuilder scripts but will execute 
+any other script you specify. (Just bear in mind that in slave mode 
+this script will remove any IP from the system except of the one you 
+specify in $ThisFirewall and unless your specify some default blocking
+rules on your firewall, it will be open until fwfallover.pl will enter
+master mode.)
+.SH "EXIT STATUS"
+If the script will receive an appropiate
+.B signal
+according to the signals described below, the script will shut down 
+gracefully and exit with 0.
+For whatever other errornous condition that will cause the script to
+fail, will cause the script to exit with 1.
+.SH "OPTIONS"
+.TP
+.B \-v
+Verbosive output.
+.TP
+.B \-f
+Stay in foreground and print output to STDOUT.
+.TP
+.B \-h
+Shows a short help screen.
+.TP
+.B \-c
+Specify alternate configuration file (defaults to 
+/etc/fwfallover.conf)
+.TP
+.B \-p
+Specify alternate PID file (defaults to /var/run/fwfallover.pid)
+.SH "SIGNALS"
+.PP
+You can send the following signal to the daemon
+.TP
+.B INT
+Shut down the daemon gracefully when in foreground.
+.TP
+.B TERM
+Shut down the daemon gracefully when daemon.
+.TP
+.B USR1
+Tells the daemon to start verbosive output.
+.TP
+.B USR2
+Tells the daemon to stop verbosive output.
+.SH "FILES"
+.TP
+.I /etc/fwfallover.conf
+Main configuration file.
+.TP
+.I /etc/init.d/fwfallover
+SysV script to manage the start up and shut down of the daemon.
+.TP
+.I /var/run/fwfallover.pid
+PID file.
+.TP
+.I /usr/share/snmpd/mibs/LEMCHENET-MIB.txt
+MIB file to support the SNMP traps sent by the script. (You should put 
+and if neccessary compile this file on your SNMP trap receiver).
+.SH "BUGS"
+.PP
+If both the script is started on both firewalls within the same milli 
+second, both scripts will enter master mode.
+Other bugs are not known, but please report any bugs found to author\&.
+.PP
+Net::Ifconfig::Wrapper is very buggy and eventually I'll have to write 
+my own interface and virtual interface handling routines.
+.PP
+I'm not sure, but I suspect that Device::SerialPort is buggy and 
+sometimes doesn't handle the serial traffic correctly, but I haven't 
+found any conclusive evidence to support my suspision.
+.SH "COPYRIGHT"
+.PP
+fwfallover.pl is Copyright (C) 2003 Valdemar Lemche.  All rights reserved.
+This script is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself.
+.PP
+This script is release TOTALLY as it is. If it will have any negative 
+impact on your systems, make you sleepless at night or even be the cause
+of world war; I will claim no responsibility! You may use this script at 
+your
+.I OWN
+risk.
+.SH "AUTHOR"
+Valdemar Lemche 
+.UR mailto:valdemar@lemche.net
+<valdemar@lemche.net>
+.UE
+.SH "SEE ALSO"
+.BR fwfallover.conf (5)
+
+Visit 
+.UR http://valdemar.lemche.net
+http://valdemar.lemche.net
+.UE
+for the latest version of fwfallover.

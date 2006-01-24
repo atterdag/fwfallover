@@ -1,0 +1,194 @@
+LEMCHENET-MIB DEFINITIONS ::= BEGIN
+
+--
+-- LEMCHENET-MIB:
+--  This MIB is created to support the software projects
+--  that I'm developing
+--
+-- SOFTWARE VERSION: 0.4alpha
+--
+-- SUBTREE: 1.3.6.1.4.1.16971
+-- iso.org.dod.internet.private.enterprises.lemcheNet
+--
+
+IMPORTS
+    enterprises
+        FROM RFC1155-SMI
+    TRAP-TYPE
+        FROM RFC-1215;
+
+lemcheNet OBJECT IDENTIFIER ::= { enterprises 16971 }
+fwfallover OBJECT IDENTIFIER ::= { lemcheNet 10 }
+fwinterfaces OBJECT IDENTIFIER ::= { lemcheNet 11 }
+
+-- BEGIN FWFALLOVER TRAP
+-- SUBTREE: 1.3.6.1.4.1.16971.10
+-- iso.org.dod.internet.private.enterprises.lemcheNet.fwfallover.fwfallover#
+
+init    TRAP-TYPE
+        ENTERPRISE fwfallover
+        DESCRIPTION
+                "Script is initializing."
+        ::= 1
+
+initFailed TRAP-TYPE
+        ENTERPRISE fwfallover
+        DESCRIPTION
+                "Failed to initialize serial port."
+        ::= 2
+
+initPingReceive TRAP-TYPE
+        ENTERPRISE fwfallover
+        DESCRIPTION
+                "Other side was initialized first, but
+                 have not finished initializing."
+        ::= 3
+
+masterMode TRAP-TYPE
+        ENTERPRISE fwfallover
+        DESCRIPTION
+                "Script is entering master mode."
+        ::= 10
+
+masterModeFailed TRAP-TYPE
+        ENTERPRISE fwfallover
+        DESCRIPTION
+                "Unable to execute master mode script."
+        ::= 11
+
+masterNoSerialLink TRAP-TYPE
+        ENTERPRISE fwfallover
+        DESCRIPTION
+                "Master side have NOT responded to 3 pings over
+		over serial but is answering to ICMP ping."
+        ::= 12
+
+masterDown TRAP-TYPE
+        ENTERPRISE  fwfallover
+        DESCRIPTION
+                "Master side have NOT responded to 3 pings and
+                 is NOT answering to ICMP ping aswell."
+        ::= 13
+
+slaveMode TRAP-TYPE
+        ENTERPRISE  fwfallover
+        DESCRIPTION
+                "Script is entering slave mode."
+        ::= 20
+
+pingSend TRAP-TYPE
+        ENTERPRISE  fwfallover
+        DESCRIPTION
+                "Master side received ping, is sending pong."
+        ::= 30
+
+pingReceive TRAP-TYPE
+        ENTERPRISE  fwfallover
+        DESCRIPTION
+                "Master side received ping, is sending pong."
+        ::= 31
+
+pingNoReceive TRAP-TYPE
+        ENTERPRISE  fwfallover
+        DESCRIPTION
+                "Master side did not receive a ping."
+        ::= 32
+
+pongSend TRAP-TYPE
+        ENTERPRISE  fwfallover
+        DESCRIPTION
+                "Slave side received pong, is sending ping."
+        ::= 40
+
+pongReceive TRAP-TYPE
+        ENTERPRISE  fwfallover
+        DESCRIPTION
+                "Slave side received pong, is sending ping."
+        ::= 41
+
+pongNoReceive TRAP-TYPE
+        ENTERPRISE  fwfallover
+        DESCRIPTION
+                "Slave side sent ping but did not received pong 
+		 before timeout."
+        ::= 42
+
+pongICMPReceive TRAP-TYPE
+        ENTERPRISE  fwfallover
+        DESCRIPTION
+                "Master or slave side sent ICMP ping, and received a ICMP 
+		 pong."
+        ::= 43
+
+pongNoICMPReceive TRAP-TYPE
+        ENTERPRISE  fwfallover
+        DESCRIPTION
+                "Master or slave side sent ICMP ping, but did not received 
+		 a ICMP pong."
+        ::= 44
+
+masterModeTearDown TRAP-TYPE
+        ENTERPRISE  fwfallover
+        DESCRIPTION
+                "Master is NOT able receive ICMP pongs from both
+                 slave and gateway, and will entering slave mode."
+        ::= 50
+
+masterModeTearDownNoList TRAP-TYPE
+        ENTERPRISE  fwfallover
+        DESCRIPTION
+                "Unable to generate list of interfaces."
+        ::= 51
+
+masterModeTearDownIfaceNotDown TRAP-TYPE
+        ENTERPRISE  fwfallover
+        DESCRIPTION
+                "Unable to shutdown interface."
+        ::= 52
+
+masterModeTearDownAliasNotDown TRAP-TYPE
+        ENTERPRISE  fwfallover
+        DESCRIPTION
+                "Unable to remove alias from interface."
+        ::= 53
+
+shutdownStart TRAP-TYPE
+        ENTERPRISE  fwfallover
+        DESCRIPTION
+                "Script received either INT or TERM signal and is 
+		 shutting down gracefully."
+        ::= 250
+
+shutdownSuccess TRAP-TYPE
+        ENTERPRISE  fwfallover
+        DESCRIPTION
+                "Script shutdown was successfull."
+        ::= 251
+
+shutdownFailed TRAP-TYPE
+        ENTERPRISE  fwfallover
+        DESCRIPTION
+                "Script shutdown failed."
+        ::= 252
+
+-- END FWFALLOVER TRAP
+
+-- BEGIN FWINTERFACES TRAP
+-- SUBTREE: 1.3.6.1.4.1.16971.11
+-- iso.org.dod.internet.private.enterprises.lemcheNet.fwinterfaces.fwinterfaces#
+
+ifUpFailed TRAP-TYPE
+        ENTERPRISE fwinterfaces
+        DESCRIPTION
+                "Unable to bring up an interface"
+        ::= 1
+
+aliasAddFailed TRAP-TYPE
+        ENTERPRISE fwinterfaces
+        DESCRIPTION
+                "Unable to add an ip to an interface."
+        ::= 2
+
+-- END FWINTERFACES TRAP
+
+END

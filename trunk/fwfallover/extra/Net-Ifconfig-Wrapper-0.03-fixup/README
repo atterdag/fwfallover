@@ -1,0 +1,1 @@
+The Net::Ifconfig::Wrapper have a bug. This is patch to fix that bug.

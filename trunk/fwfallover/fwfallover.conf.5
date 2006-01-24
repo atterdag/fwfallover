@@ -1,0 +1,137 @@
+.TH "FWFALLOVER.CONF" "5" "20030521" "FWFALLOVER" ""
+.SH "NAME"
+fwfallover.conf \- options for fwfallover.pl daemon
+.SH "DESCRIPTION"
+.B fwfallover.pl
+is just a tiny perl script I made to make two
+firewalls perform simple fallover using the serial port as well as 
+ICMP echo requests and replies.
+
+Basically its just a simple master/slave relation. Master is the side
+that comes up first and the slave checks if master is up, if not, the
+slave will try to become the master itself.
+
+The script is very much written for fwbuilder scripts but will execute
+any other script you specify. (Just bear in mind that in slave mode
+this script will remove any IP from the system except of the one you
+specify in $ThisFirewall and unless your specify some default blocking
+rules on your firewall, it will be open until fwfallover.pl will enter
+master mode.)
+
+This man page describes the format of the configuration file
+.I /etc/fwfallover.conf
+.
+.SH "FILE FORMAT"
+The file
+.I /etc/fwfallover.conf
+consists of several lines. Only lines beginning with known parameters 
+will be recognized and all the rest will be ignored, but your should 
+for good measure begin comments with '#'.
+.P
+When a parameter is not specified, some default value is used. The 
+default values are the values shown here, unlessotherwise indicated. 
+Options are given as keywords followed by somewhitespace followed by 
+the value. If the 
+.B value
+contains whitespace you have to quote it using a "".
+.P
+The 
+.B keyword 
+is case sensitive, so "private" and "PRIVATE" are
+.B not identical.
+.SH "OPTIONS"
+.TP 
+.BI PortName " serial port"
+Full path to the serial port which fwfallover.pl should do the serial
+traffic over.
+.IP
+.B Defaults:
+PortName /dev/ttyS0
+.TP 
+.BI MasterModeScript " filename "
+Script to run when entering MasterMode.
+.IP
+.B Defaults:
+MasterModeScript /etc/init.d/rc.firewall
+.TP 
+.BI SleepInterval " seconds "
+Wait time between sending and receiving over the serial port.
+.IP
+.B Defaults:
+SleepInterval 5
+.TP 
+.BI SyslogFacility " facility " | " none "
+Define here which facility you want to send to in the syslog. Just omit 
+the parameter or use 
+.I none
+to 
+.B disable
+syslog support.
+.IP
+.B Defaults:
+SyslogFacility local3
+.TP 
+.BI ThisFirewall " IP address "  
+Primary IP of the this firewall.
+.IP
+.B Defaults:
+ThisFirewall
+.I undefined
+.IP
+.B NOTE:
+When entering slave mode all IPs except of the IP which is defined in 
+ThisFirewall and (the loopback IP) are shutdown.
+.TP 
+.BI OtherFirewall " IP address "  
+The Primary IP of the other firewall.
+.IP
+.B Defaults:
+OtherFirewall
+.I undefined
+.TP 
+.BI Gateway " IP address "  
+IP address of default router for the IP specified in 
+.B ThisFirewall
+.
+.IP
+.B Defaults:
+Gateway
+.I undefined
+.TP
+.BI SNMPTRAPReceiver " IP address " | " none "
+IP address of the host you want to receive SNMP trap sent by 
+fwfallover.pl. Just omit the parameter or use 
+.I none
+to 
+.B disable
+SNMP Trap support.
+.IP
+.B Defaults:
+SNMPTRAPReceiver none
+.IP
+.B NOTE:
+ATM fwfallover only suppport sending SNMPv1 traps.
+.TP
+.BI SNMPCommunity " community "
+Specify here the SNMP community which you send the trap.
+.IP
+.B Defaults:
+SNMPCommunity private
+.SH "COPYRIGHT"
+.PP 
+fwfallover.pl is Copyright (C) 2003 Valdemar Lemche.  All rights reserved. 
+This script is free software; you can redistribute it and/or modify it 
+under the same terms as Perl itself.
+.SH "AUTHOR"
+Valdemar Lemche
+.UR mailto:valdemar@lemche.net
+<valdemar@lemche.net>
+.UE
+.SH "SEE ALSO"
+.BR fwfallover.pl (8)
+.PP 
+Visit
+.UR http://valdemar.lemche.net
+http://valdemar.lemche.net
+.UE
+for the latest version of fwfallover.

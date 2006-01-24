@@ -1,0 +1,63 @@
+INSTALLATION
+============
+
+This is and ugly do-it-yourself installation, but I'm too lazy
+to make an actual installation script or Makefile.
+
+Prerequisites:
+--------------
+ - Working firewall setup (and firewall started but a script will
+   work. I recommend a fwbuilder generated script).
+ - Perl 5.6.0 or newer.
+ - Nullmodem cable connected between the two firewalls.
+
+Installing additional modules:
+------------------------------
+# perl -MCPAN -e shell
+(if CPAN is not configured then its a good time to do it now)
+cpan> install Device::SerialPort
+cpan> install Net::Ifconfig::Wrapper
+cpan> install Net::SNMP
+cpan> install Proc::Daemon
+cpan> install Proc::PID_File
+cpan> exit
+
+Extracting tarball:
+-------------------
+# tar zxf fwfallover-0.4.tar.gz
+# cd fallover-0.4
+
+Fixing Net::Ifconfig::Wrapper:
+------------------------------
+# patch -p1 /usr/local/share/perl/<version>/Net/Ifconfig/Wrapper.pm extra/Net-Ifconfig-Wrapper-0.03-fixup/Wrapper.pm.patch
+
+Installing the core files:
+--------------------------
+# cp fwfallover.pl /usr/local/sbin
+# cp fwfallover.conf.example /etc/fwfallover.conf
+# <your favorite editor> /etc/fwfallover.conf
+# chmod 0700 /usr/local/sbin/fwfallover.pl
+# chmod 0600 /etc/fwfallover.conf
+
+Installing man pages:
+---------------------
+# mkdir -p /usr/local/man/man{5,8}
+# cp fwfallover.conf.5 /usr/local/man/man5
+# cp fwfallover.pl.8 /usr/local/man/man8
+
+If you are using a SysV OS then:
+--------------------------------
+# cp fwfallover.init /etc/init.d/fwfallover
+# chmod 0755 /etc/init.d/fwfallover
+# ln -s ../init.d/fwfallover /etc/rc2.d/S40fwfallover
+# ln -s ../init.d/fwfallover /etc/rc3.d/S40fwfallover
+# ln -s ../init.d/fwfallover /etc/rc4.d/S40fwfallover
+# ln -s ../init.d/fwfallover /etc/rc5.d/S40fwfallover
+# ln -s ../init.d/fwfallover /etc/rc0.d/K00fwfallover
+# ln -s ../init.d/fwfallover /etc/rc1.d/K00fwfallover
+# ln -s ../init.d/fwfallover /etc/rc6.d/K00fwfallover
+
+If you want to use the SNMP traps then you must copy and (if
+neccessary compile) extra/mib/LEMCHENET-MIB.txt to what ever
+box receiving the SNMP traps.
+
