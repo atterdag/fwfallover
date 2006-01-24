@@ -1,11 +1,17 @@
+2003-12-20  Valdemar Lemche  <valdemar@lemche.net>
+
+    * fixed minor bugs
+
+    -- Valdemar Lemche <valdemar@lemche.net>
+
 2003-10-13  Valdemar Lemche  <valdemar@lemche.net>
-    
+
     * fwfallover.pl 0.4 beta, "Leaving the craddle" release.
     * SNMP trap support.
     * Moved part of configuration settings to external configuration file.
     * SysV start script.
     * Documentation.
-    
+
     -- Valdemar Lemche <valdemar@lemche.net>
 
 2003-05-14  Valdemar Lemche  <valdemar@lemche.net>
