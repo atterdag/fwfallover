@@ -2,6 +2,8 @@
 #
 # fwfallover.pl - Valdemar Lemche <valdemar@lemche.net>
 #
+# fwfallover.pl - Valdemar Lemche <valdemar@lemche.net>
+#
 # This script is release TOTALLY as it is, and under no license at all. If it
 # will have any negative impact on your systems, make you sleepless at night
 # or cause world war, I claim no responsibility!
@@ -12,35 +14,50 @@
 # Basically its just a simple master/slave relation. Master is the side that
 # comes up first and the slave checks if master is up, if not, the slave will
 # try to become the master itself.
-#
+$version = "0.3alpha";
 
-use Proc::Daemon;
-use Device::SerialPort;
+# Standard Modules
 use Getopt::Std;
-use Net::Ifconfig::Wrapper;
 use Net::Ping;
-use Net::SNMP;
 use Sys::Syslog;
+
+# Third Party Modules
+use Device::SerialPort;
+use Net::Ifconfig::Wrapper;
+use Net::SNMP;
+use Proc::Daemon;
+use Proc::PID_File;
 
 getopts('vfh');
 
-die "Usage: fwfallover.pl [-v] [-f] [-h]\n\t-v verbose output\n\t-f print output to foreground\n\t-h this help\n\nversion 0.1 alpha\n" if ($opt_h);
+die "Usage: fwfallover.pl [-v] [-f] [-h]\n\t-v\tverbosive output\n\t-f\tstay in and print output to foreground\n\t-h\tthis help\n\nversion $version\n" if ($opt_h);
 
-#
 # IMPORTENT OPTIONS ARE SET HERE!
-#
 $PortName         = "/dev/ttyS0";
-$MasterModeScript = "/usr/local/sbin/nonofwinterfaces.pl";
+$MasterModeScript = "/usr/local/sbin/fwinterfaces.pl";
 $SleepInterval    = "5";
 $SyslogFacility   = "local3";
-$ThisFirewall     = "192.168.1.10";
-$OtherFirewall    = "192.168.1.5";
-$Gateway          = "192.168.1.1";
+$ThisFirewall     = "192.116.202.103";
+$OtherFirewall    = "192.116.202.24";
+$Gateway          = "192.116.202.1";
 $SNMPTRAPReceiver = "127.0.0.1";
 $SNMPCommunity    = "private";
 $pingProtocol     = "icmp";
+$PIDFile          = "/var/run/fwfallover.pid";
+
+unless ( $opt_f ) {
+    $SIG{'TERM'} = 'shutdown';
+    Proc::Daemon::Init;
+} else {
+    $SIG{'INT'} = 'shutdown';
+}
 
 openlog( 'fwfallover.pl', 'cons,pid', $SyslogFacility );
+
+umask 0122;
+errorhandler("Already running, shutting down...",'','2') if ( hold_pid_file($PIDFile) );
+umask 0;
+
 syslog( 'alert', "initializing on port: $PortName" );
 snmptrap( '1', "$PortName");
 if ($opt_f) {
@@ -124,7 +141,7 @@ sub master {
         $now = localtime;
         print "$now: entering master mode\n";
     }
-    system($MasterModeScript);# || errorhandler("Can't execute $MasterModeScript:", "$!", "11");
+    exec($MasterModeScript) || errorhandler("Can't execute $MasterModeScript:", "$!", "11");
     while (1) {
         my $input = $PortObj->input;
         if ( $input =~ /ping/ ) {
@@ -233,11 +250,11 @@ sub snmptrap {
         printf("ERROR: %s.\n", $error);
         syslog('crit', "snmp session could not be established: $error");
     }
-    my $result = $session->trap(-enterprise => '1.3.6.1.4.1',
+    my $result = $session->trap(-enterprise => '.1.3.6.1.4.1.16971.10',
                                 -agentaddr => $ThisFirewall,
                                 -generictrap => '6',
-                                -specifictrap => '0',
-                                -varbindlist => [ "1.3.6.1.4.1.16971.10.0.$_[0]", OCTET_STRING, $_[1]]
+                                -specifictrap => $_[0],
+                                -varbindlist => [ ".1.3.6.1.4.1.16971.10.0.$_[0]", OCTET_STRING, $_[1]]
                                );
     if (!defined($result)) {
         printf("ERROR: %s.\n", $session->error);
@@ -248,23 +265,28 @@ sub snmptrap {
 }
 
 sub errorhandler {
-    $message = $_[0];
-    $error = $_[1];
-    $snmptrap = $_[2];
     syslog('alert',"$_[0]: $_[1]");
-    snmptrap( $snmptrap, $error);
-    die "$_[0]: $_[1]\n";
+    snmptrap( $_[2], $_[1]);
+    $now = localtime;
+    die "$now: $_[0]: $_[1]\n";
 }
 
 sub mastermodeteardown {
     syslog('crit','masterModeTearDown');
-    snmptrap('14','1');
+    snmptrap('14','');
     my $Info = Net::Ifconfig::Wrapper::Ifconfig('list', '', '', '') or errorhandler("unable to list interfaces","$@", '15');
     scalar(keys(%{$Info})) or errorhandler("No one interface found. Something wrong?",'1','15');
     foreach $Iface (sort(keys(%{$Info}))) {
         unless ( $Iface eq "lo") {
             foreach $Ip ( keys %{ $Info->{$Iface}{'inet'} } ) {
                 unless ( $Ip eq $ThisFirewall ) {
+                    if ($opt_v) {
+                        syslog( 'notice', "removing $Ip from $Iface");
+                        if ( $opt_f ) {
+                            $now = localtime;
+                            print "$now: removing $Ip from $Iface\n";
+                        }
+                    }
                     $Result = Net::Ifconfig::Wrapper::Ifconfig('-alias', $Iface, $Ip, '');
                     $Result or syslog('alert',"unable to remove ip, $Ip: $@");
                 }
@@ -272,5 +294,23 @@ sub mastermodeteardown {
         }
     }
     sleep($SleepInterval);
+}
+
+sub shutdown {
+    if ( $opt_f ) {
+        $signal = "INT";
+        $now = localtime;
+        print "$now: caught $signal, shutting down gracefully\n";
+    } else {
+        $signal = "TERM";
+    }
+    syslog('crit',"caught $signal, shutting down gracefully");
+    snmptrap('100','');
+    mastermodeteardown;
+    undef $PortObj;
+    snmptrap('101','');
+    syslog('crit',"shutdown successful...");
+    closelog;
+    exit;
 }
 
