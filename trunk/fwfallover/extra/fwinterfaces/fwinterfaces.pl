@@ -1,4 +1,18 @@
 #!/usr/bin/perl
+#
+# $Id: fwinterfaces.pl,v 1.2 2006-04-06 11:40:03 atterdag Exp $
+#
+# AUTHOR: Valdemar Lemche <valdemar@lemche.net>
+#
+# fwinterfaces.pl is Copyright (C) 2003 Valdemar Lemche.  All rights reserved.
+# This script is free software; you can redistribute it and/or modify it
+# under the same terms as Perl itself.
+#
+# This script is release TOTALLY as it is. If it will have any negative 
+# impact on your systems, make you sleepless at night or even be the cause
+# of world war; I will claim no responsibility! You may use this script at 
+# you OWN risk.
+#
 
 use Net::Ifconfig::Wrapper;
 use Sys::Syslog;
@@ -14,7 +28,7 @@ else {
 }
 $syslog_facility  = "local3";
 $SNMPTRAPReceiver = "none"; # use "none" to disable SNMP
-$SNMPCommunity    = "none";        # use "none" to disable SNMP
+$SNMPCommunity    = "none"; # use "none" to disable SNMP
 
 openlog( 'fwinterfaces.pl', 'cons,pid', $syslog_facility );
 

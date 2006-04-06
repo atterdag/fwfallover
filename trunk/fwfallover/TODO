@@ -1,3 +1,5 @@
+$Id: TODO,v 1.2 2006-04-06 11:40:03 atterdag Exp $
+
 Main features that should be incorperated in to the next release
 
 - Keeping the clients rc.firewall script updated through the serial port.

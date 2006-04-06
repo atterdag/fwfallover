@@ -1,1 +1,3 @@
+$Id: README,v 1.2 2006-04-06 11:40:03 atterdag Exp $
+
 The Net::Ifconfig::Wrapper have a bug. This is patch to fix that bug.

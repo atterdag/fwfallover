@@ -1,4 +1,9 @@
 #!/bin/sh
+#
+# $Id: iptables-propagate.sh,v 1.2 2006-04-06 11:40:03 atterdag Exp $
+#
+# AUTHOR: Valdemar Lemche <valdemar@lemche.net>
+#
 
 FIREWALL1=firewall1
 FIREWALL2=firewall1
