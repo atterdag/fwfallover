@@ -1,3 +1,5 @@
+-- $Id: LEMCHENET-MIB.txt,v 1.2 2006-04-06 11:40:03 atterdag Exp $
+
 LEMCHENET-MIB DEFINITIONS ::= BEGIN
 
 --

@@ -1,3 +1,5 @@
+# $Id: fwfallover.conf.example,v 1.2 2006-04-06 11:40:03 atterdag Exp $
+#
 # This is an example configuration file for fwfallover.pl, for more 
 # Documentation please refer to fwfallover.conf(5)
 

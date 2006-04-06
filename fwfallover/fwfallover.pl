@@ -1,10 +1,20 @@
 #!/usr/bin/perl
 #
+# $Id: fwfallover.pl,v 1.6 2006-04-06 11:40:03 atterdag Exp $
+#
 # fwfallover.pl - Valdemar Lemche <valdemar@lemche.net>
 #
-# This script is licensed under GPL
+# fwfallover.pl is Copyright (C) 2003 Valdemar Lemche.  All rights reserved.
+# This script is free software; you can redistribute it and/or modify it
+# under the same terms as Perl itself.
 #
-$VERSION = "0.4.1alpha";
+# This script is release TOTALLY as it is. If it will have any negative 
+# impact on your systems, make you sleepless at night or even be the cause
+# of world war; I will claim no responsibility! You may use this script at 
+# you OWN risk.
+#
+
+$VERSION = "0.4.1.1beta";
 
 # Standard Modules
 use Getopt::Std;

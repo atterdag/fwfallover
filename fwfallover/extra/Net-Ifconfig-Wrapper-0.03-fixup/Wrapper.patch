@@ -1,3 +1,5 @@
+# $Id: Wrapper.patch,v 1.2 2006-04-06 11:40:03 atterdag Exp $
+
 --- Wrapper.pm	Tue Oct 14 00:15:48 2003
 +++ Wrapper.pm.fixed	Tue Oct 14 00:15:14 2003
 @@ -681,9 +681,9 @@ $Ifconfig{'up'} = $Ifconfig{'inet'};
