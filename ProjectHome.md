@@ -1,0 +1,5 @@
+This is just a tiny perl script I made to make two firewalls perform simple fallover using the serial port as well as ICMP echo requests and replies.
+
+Basically its just a simple master/slave relation. Master is the side that comes up first and the slave checks if master is up, if not, the slave will try to become the master itself.
+
+The script is very much written for fwbuilder scripts but will execute any other script you specify. (Just bear in mind that in slave mode this script will remove any IP from the system except of the one you specify in $ThisFirewall and unless your specify some default blocking rules on your firewall, it will be open until fwfallover.pl will enter master mode.)
